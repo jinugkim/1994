@@ -2,21 +2,18 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>28인승 버스 좌석 배치 시각화</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>1994 등반대 버스 - 좌석 배치</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>28인승 버스 좌석 배치 시각화</h1>
-            <p>채팅 텍스트를 입력하여 좌석 배치를 확인하세요</p>
+            <h1>1994 등반대 버스 - 좌석 배치</h1>
         </header>
         
         <div class="input-section">
-            <textarea id="textInput" placeholder="승객 정보를 입력하세요...
-예: 1. 김진욱(입완, 양재, 1)
-2. 나정선(예정, 사당, 3)"></textarea>
+            <textarea id="textInput"></textarea>
             <button id="parseButton">좌석 배치 생성</button>
             <button id="clearButton">초기화</button>
         </div>
@@ -136,6 +133,11 @@
                     <span>입금예정</span>
                 </div>
             </div>
+        </div>
+        
+        <div class="statistics-section">
+            <h3>탑승지 통계</h3>
+            <div id="locationStats"></div>
         </div>
         
         <div class="passenger-list">

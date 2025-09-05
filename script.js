@@ -118,6 +118,7 @@ class BusSeatManager {
 
             // 좌석 배치도 업데이트
             this.displaySeats();
+            this.displayLocationStats();
             this.displayPassengerList();
 
             // 성공 메시지
@@ -147,6 +148,82 @@ class BusSeatManager {
                 seatElement.title = `${passenger.name}\n${passenger.paymentStatus === 'paid' ? '입금완료' : '입금예정'}\n${passenger.location}`;
             }
         });
+    }
+
+    displayLocationStats() {
+        const locationStats = document.getElementById('locationStats');
+        
+        if (this.passengers.length === 0) {
+            locationStats.innerHTML = '<p style="color: #7f8c8d; text-align: center;">통계 정보가 없습니다.</p>';
+            return;
+        }
+
+        // 탑승지별 통계 계산
+        const locationData = {};
+        this.passengers.forEach(passenger => {
+            const location = passenger.location;
+            if (!locationData[location]) {
+                locationData[location] = {
+                    total: 0,
+                    paid: 0,
+                    pending: 0
+                };
+            }
+            locationData[location].total++;
+            if (passenger.paymentStatus === 'paid') {
+                locationData[location].paid++;
+            } else {
+                locationData[location].pending++;
+            }
+        });
+
+        // 탑승지별 통계 HTML 생성
+        const locationStatsHTML = Object.entries(locationData)
+            .sort((a, b) => b[1].total - a[1].total) // 인원수 많은 순으로 정렬
+            .map(([location, stats]) => {
+                return `
+                    <div class="location-stat-item">
+                        <div>
+                            <div class="location-name">${location}</div>
+                            <div class="location-details">
+                                <span class="paid-count">입금완료 ${stats.paid}명</span> / 
+                                <span class="pending-count">입금예정 ${stats.pending}명</span>
+                            </div>
+                        </div>
+                        <div class="location-count">${stats.total}명</div>
+                    </div>
+                `;
+            }).join('');
+
+        // 전체 통계
+        const totalStats = this.getStatistics();
+        const totalStatsHTML = `
+            <div class="total-stats">
+                <div class="total-stat">
+                    <div class="number">${totalStats.total}</div>
+                    <div class="label">총 승객</div>
+                </div>
+                <div class="total-stat">
+                    <div class="number">${totalStats.paid}</div>
+                    <div class="label">입금완료</div>
+                </div>
+                <div class="total-stat">
+                    <div class="number">${totalStats.pending}</div>
+                    <div class="label">입금예정</div>
+                </div>
+                <div class="total-stat">
+                    <div class="number">${totalStats.empty}</div>
+                    <div class="label">빈 좌석</div>
+                </div>
+            </div>
+        `;
+
+        locationStats.innerHTML = `
+            <div class="location-stats">
+                ${locationStatsHTML}
+            </div>
+            ${totalStatsHTML}
+        `;
     }
 
     displayPassengerList() {
@@ -198,7 +275,8 @@ class BusSeatManager {
         // 좌석 상태 초기화
         this.clearSeats();
         
-        // 승객 목록 초기화
+        // 통계 및 승객 목록 초기화
+        this.displayLocationStats();
         this.displayPassengerList();
         
         console.log('모든 데이터가 초기화되었습니다.');
@@ -240,6 +318,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 개발 모드에서 예시 데이터 자동 입력 (주석 해제하여 사용)
     // document.getElementById('textInput').value = exampleData;
     
-    console.log('28인승 버스 좌석 배치 시각화 시스템이 준비되었습니다.');
+    console.log('1994 등반대 버스 좌석 배치 시스템이 준비되었습니다.');
     console.log('사용법: 텍스트를 입력하고 "좌석 배치 생성" 버튼을 클릭하세요.');
 });

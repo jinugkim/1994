@@ -5,10 +5,13 @@
 }
 
 body {
-    font-family: 'Arial', sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     background-color: #f5f5f5;
     color: #333;
     line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
 }
 
 .container {
@@ -67,6 +70,8 @@ button {
     font-size: 16px;
     font-weight: bold;
     transition: all 0.3s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 #parseButton {
@@ -147,6 +152,9 @@ button {
     cursor: pointer;
     transition: all 0.3s ease;
     position: relative;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 .seat:hover {
@@ -180,7 +188,6 @@ button {
     justify-content: center;
     gap: 5px;
     padding-top: 15px;
-    border-top: 2px dashed #bdc3c7;
 }
 
 .back-seats .seat {
@@ -246,6 +253,90 @@ button {
     width: 30px;
     height: 25px;
     font-size: 12px;
+}
+
+.statistics-section {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 30px;
+}
+
+.statistics-section h3 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+}
+
+.location-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.location-stat-item {
+    background-color: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.location-name {
+    font-weight: bold;
+    color: #2c3e50;
+    font-size: 16px;
+}
+
+.location-count {
+    background-color: #3498db;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.location-details {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-top: 5px;
+}
+
+.paid-count {
+    color: #27ae60;
+}
+
+.pending-count {
+    color: #f39c12;
+}
+
+.total-stats {
+    display: flex;
+    justify-content: space-around;
+    background-color: #ecf0f1;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
+}
+
+.total-stat {
+    text-align: center;
+}
+
+.total-stat .number {
+    font-size: 24px;
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.total-stat .label {
+    font-size: 12px;
+    color: #7f8c8d;
+    margin-top: 5px;
 }
 
 .passenger-list {
@@ -321,62 +412,242 @@ button {
     font-size: 14px;
 }
 
-/* 반응형 디자인 */
+/* 모바일 최적화 반응형 디자인 */
 @media (max-width: 768px) {
     .container {
         padding: 10px;
     }
     
     header h1 {
-        font-size: 2rem;
+        font-size: 1.8rem;
+        margin-bottom: 20px;
+    }
+    
+    .input-section {
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    
+    #textInput {
+        height: 100px;
+        font-size: 16px; /* iOS zoom 방지 */
+    }
+    
+    button {
+        padding: 15px 20px;
+        font-size: 16px;
+        width: 100%;
+        margin: 5px 0;
+    }
+    
+    .bus-container {
+        padding: 15px;
+        margin-bottom: 20px;
     }
     
     .bus-layout {
         max-width: 100%;
+        overflow-x: auto;
+        padding: 10px 0;
     }
     
     .seat {
-        width: 40px;
-        height: 35px;
+        width: 42px;
+        height: 38px;
         font-size: 12px;
+        font-weight: bold;
     }
     
     .back-seats .seat {
         width: 45px;
+        height: 38px;
+    }
+    
+    .seat.occupied::after {
+        bottom: -20px;
+        font-size: 9px;
+        max-width: 60px;
+    }
+    
+    .aisle {
+        width: 25px;
+    }
+    
+    .aisle::after {
+        font-size: 10px;
+    }
+    
+    .legend, .statistics-section, .passenger-list {
+        padding: 15px;
+        margin-bottom: 20px;
     }
     
     .legend-items {
         justify-content: center;
+        gap: 20px;
+    }
+    
+    .legend-item .seat {
+        width: 25px;
+        height: 20px;
+        font-size: 10px;
+    }
+    
+    .location-stats {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .location-stat-item {
+        padding: 12px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .location-name {
+        font-size: 15px;
+    }
+    
+    .location-count {
+        align-self: flex-end;
+        font-size: 13px;
+        padding: 4px 10px;
+    }
+    
+    .total-stats {
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px;
+    }
+    
+    .total-stat {
+        flex: 1;
+        min-width: 80px;
+    }
+    
+    .total-stat .number {
+        font-size: 20px;
+    }
+    
+    .total-stat .label {
+        font-size: 11px;
     }
     
     .passenger-item {
         flex-direction: column;
         align-items: flex-start;
-        gap: 10px;
+        gap: 8px;
+        padding: 12px;
     }
     
     .passenger-info {
         width: 100%;
-        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    
+    .passenger-name {
+        font-size: 15px;
+    }
+    
+    .passenger-status {
+        font-size: 11px;
+        padding: 3px 6px;
+    }
+    
+    .passenger-location {
+        font-size: 13px;
+    }
+    
+    .seat-number {
+        font-size: 13px;
+        padding: 3px 6px;
     }
 }
 
 @media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+    
     .seat-row {
-        gap: 5px;
+        gap: 3px;
+        margin-bottom: 6px;
+    }
+    
+    .seat-pair {
+        gap: 3px;
     }
     
     .seat {
-        width: 35px;
-        height: 30px;
+        width: 38px;
+        height: 34px;
         font-size: 11px;
     }
     
     .back-seats .seat {
         width: 40px;
+        height: 34px;
     }
     
     .aisle {
         width: 20px;
+    }
+    
+    .aisle::after {
+        font-size: 9px;
+    }
+    
+    .seat.occupied::after {
+        bottom: -18px;
+        font-size: 8px;
+        max-width: 50px;
+    }
+    
+    .driver-area {
+        padding: 8px 20px;
+        font-size: 14px;
+    }
+    
+    .total-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .location-stat-item {
+        padding: 10px;
+    }
+    
+    .passenger-item {
+        padding: 10px;
+    }
+}
+
+@media (max-width: 360px) {
+    .container {
+        padding: 8px;
+    }
+    
+    .seat {
+        width: 34px;
+        height: 30px;
+        font-size: 10px;
+    }
+    
+    .back-seats .seat {
+        width: 36px;
+        height: 30px;
+    }
+    
+    .aisle {
+        width: 18px;
+    }
+    
+    .seat.occupied::after {
+        display: none; /* 매우 작은 화면에서는 이름 숨김 */
+    }
+    
+    .total-stat .number {
+        font-size: 18px;
     }
 }
