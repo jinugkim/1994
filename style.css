@@ -44,6 +44,60 @@ header p {
     margin-bottom: 30px;
 }
 
+.input-help {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border-left: 4px solid #17a2b8;
+}
+
+.input-help h4 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 14px;
+}
+
+.format-examples {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 13px;
+    color: #495057;
+}
+
+.format-tag {
+    display: inline-block;
+    background: #17a2b8;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-right: 8px;
+    min-width: 40px;
+    text-align: center;
+}
+
+.input-status {
+    margin-top: 10px;
+    margin-bottom: 15px;
+    font-size: 13px;
+    min-height: 20px;
+}
+
+.status-success {
+    color: #28a745;
+}
+
+.status-warning {
+    color: #ffc107;
+}
+
+.status-error {
+    color: #dc3545;
+}
+
 #textInput {
     width: 100%;
     height: 120px;

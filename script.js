@@ -35,6 +35,49 @@ class BusSeatManager {
                 this.parseAndDisplay();
             }
         });
+
+        // 실시간 입력 상태 표시
+        textInput.addEventListener('input', () => this.showInputStatus());
+        textInput.addEventListener('paste', () => {
+            setTimeout(() => this.showInputStatus(), 100);
+        });
+    }
+
+    showInputStatus() {
+        const textInput = document.getElementById('textInput');
+        const statusDiv = document.getElementById('inputStatus');
+        const inputText = textInput.value.trim();
+
+        if (!inputText) {
+            statusDiv.innerHTML = '';
+            return;
+        }
+
+        const lines = inputText.split('\n').filter(line => line.trim());
+        const previewResult = this.parsePassengerTextWithFeedback(inputText);
+        
+        let statusHTML = '';
+        
+        if (previewResult.passengers.length > 0) {
+            statusHTML += `<span class="status-success">✓ ${previewResult.passengers.length}명의 승객 정보 인식됨</span>`;
+        }
+        
+        if (previewResult.errors.length > 0) {
+            statusHTML += `<span class="status-error"> | ⚠️ ${previewResult.errors.length}줄 처리 불가</span>`;
+        }
+        
+        if (previewResult.warnings.length > 0) {
+            statusHTML += `<span class="status-warning"> | ⚡ ${previewResult.warnings.length}개 주의사항</span>`;
+        }
+
+        // 중복 좌석 체크
+        const seatNumbers = previewResult.passengers.map(p => p.seatNumber);
+        const duplicates = seatNumbers.filter((seat, index) => seatNumbers.indexOf(seat) !== index);
+        if (duplicates.length > 0) {
+            statusHTML += `<span class="status-error"> | 🚫 중복 좌석: ${[...new Set(duplicates)].join(', ')}</span>`;
+        }
+
+        statusDiv.innerHTML = statusHTML;
     }
 
     parsePassengerText(text) {
@@ -51,28 +94,293 @@ class BusSeatManager {
         return passengers;
     }
 
-    parsePassengerLine(line) {
-        // 정규식 패턴: 숫자. 이름(입금여부, 탑승지, 좌석번호)
-        // 예: "1. 김진욱(입완, 양재, 1)" 또는 "2. 나정선(예정, 사당, 3)"
-        const pattern = /(\d+)\.\s*([^(]+)\(([^,]+),\s*([^,]+),\s*(\d+)\)/;
-        const match = line.trim().match(pattern);
+    parsePassengerTextWithFeedback(text) {
+        const passengers = [];
+        const errors = [];
+        const warnings = [];
+        const lines = text.split('\n').filter(line => line.trim());
 
-        if (!match) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const passenger = this.parsePassengerLine(line);
+            
+            if (passenger) {
+                passengers.push(passenger);
+                
+                // 경고 사항 체크
+                if (passenger.name.length < 2) {
+                    warnings.push(`줄 ${i + 1}: 이름이 너무 짧습니다 (${passenger.name})`);
+                }
+                
+                if (!this.isCommonLocation(passenger.location)) {
+                    warnings.push(`줄 ${i + 1}: 일반적이지 않은 지역명입니다 (${passenger.location})`);
+                }
+            } else {
+                // 파싱 실패한 줄 분석
+                const errorAnalysis = this.analyzeParsingError(line, i + 1);
+                errors.push(errorAnalysis);
+            }
+        }
+
+        return {
+            passengers: passengers,
+            errors: errors,
+            warnings: warnings
+        };
+    }
+
+    analyzeParsingError(line, lineNumber) {
+        const suggestions = [];
+        
+        // 이름 검출
+        const nameMatch = line.match(/[가-힣]{2,4}/);
+        if (!nameMatch) {
+            suggestions.push('한글 이름을 포함해주세요');
+        }
+        
+        // 숫자 검출
+        const numberMatch = line.match(/\d+/);
+        if (!numberMatch) {
+            suggestions.push('좌석 번호를 포함해주세요');
+        }
+        
+        // 지역명 검출
+        const locationMatch = line.match(/[가-힣]{2,4}(?:역|동|구|시)?/);
+        if (!locationMatch) {
+            suggestions.push('탑승지를 포함해주세요');
+        }
+        
+        return {
+            line: lineNumber,
+            text: line,
+            suggestions: suggestions
+        };
+    }
+
+    isCommonLocation(location) {
+        const commonLocations = [
+            '양재', '강남', '사당', '서초', '논현', '신논현', '역삼', '선릉', '삼성', '잠실',
+            '신촌', '홍대', '이태원', '명동', '동대문', '성수', '건대', '왕십리', '종로',
+            '구로', '신도림', '영등포', '여의도', '마포', '공덕', '신촌', '홍익대'
+        ];
+        
+        return commonLocations.some(loc => location.includes(loc));
+    }
+
+    showParsingError(errors, originalText) {
+        let errorMessage = '다음 줄들을 처리할 수 없습니다:\n\n';
+        
+        errors.forEach(error => {
+            errorMessage += `줄 ${error.line}: "${error.text}"\n`;
+            if (error.suggestions.length > 0) {
+                errorMessage += `  → ${error.suggestions.join(', ')}\n`;
+            }
+            errorMessage += '\n';
+        });
+        
+        errorMessage += '지원하는 형식 예시:\n';
+        errorMessage += '• 1. 김진욱(입완, 양재, 1)\n';
+        errorMessage += '• 김진욱 양재 1번 입금완료\n';
+        errorMessage += '• 김진욱/양재/1/입완\n';
+        errorMessage += '• 김진욱: 양재 1번 돈냄\n';
+        
+        alert(errorMessage);
+    }
+
+    showParsingWarnings(warnings) {
+        if (warnings.length > 0) {
+            const warningMessage = '주의사항:\n\n' + warnings.join('\n');
+            console.warn(warningMessage);
+            
+            // 사용자에게 선택적으로 표시
+            if (confirm(warningMessage + '\n\n계속 진행하시겠습니까?')) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    parsePassengerLine(line) {
+        // 자연어 처리를 통한 다양한 형식 지원
+        return this.nlpParsePassengerLine(line);
+    }
+
+    nlpParsePassengerLine(line) {
+        const cleanLine = line.trim();
+        
+        // 다양한 패턴들을 시도
+        const patterns = [
+            // 기본 형식: "1. 김진욱(입완, 양재, 1)"
+            /(\d+)\.\s*([^(]+)\(([^,]+),\s*([^,]+),\s*(\d+)\)/,
+            // 공백 구분: "1 김진욱 입완 양재 1"
+            /(\d+)\s+([가-힣a-zA-Z]+)\s+([^\s]+)\s+([^\s]+)\s+(\d+)/,
+            // 자연어 형식: "김진욱 양재 1번 입금완료"
+            /([가-힣a-zA-Z]+)\s+([가-힣]+(?:역|동|구|시)?)\s+(\d+)(?:번|좌석)?\s*([^\s]*)/,
+            // 괄호 다른 순서: "1. 김진욱(1, 양재, 입완)"
+            /(\d+)\.\s*([^(]+)\((\d+),\s*([^,]+),\s*([^)]+)\)/,
+            // 슬래시 구분: "김진욱/양재/1/입완"
+            /([가-힣a-zA-Z]+)\/([^\/]+)\/(\d+)\/([^\/\s]+)/,
+            // 콜론 구분: "김진욱: 양재 1번 입금완료"
+            /([가-힣a-zA-Z]+):\s*([가-힣]+(?:역|동|구|시)?)\s+(\d+)(?:번|좌석)?\s*([^\s]*)/
+        ];
+
+        for (let i = 0; i < patterns.length; i++) {
+            const match = cleanLine.match(patterns[i]);
+            if (match) {
+                return this.extractPassengerInfo(match, i);
+            }
+        }
+
+        // 더 유연한 자연어 처리
+        return this.fuzzyParsePassengerLine(cleanLine);
+    }
+
+    extractPassengerInfo(match, patternIndex) {
+        let orderNum, name, paymentStatus, location, seatNum;
+
+        switch (patternIndex) {
+            case 0: // 기본 형식
+                [, orderNum, name, paymentStatus, location, seatNum] = match;
+                break;
+            case 1: // 공백 구분
+                [, orderNum, name, paymentStatus, location, seatNum] = match;
+                break;
+            case 2: // 자연어 형식
+                [, name, location, seatNum, paymentStatus] = match;
+                orderNum = null; // 자동 생성
+                break;
+            case 3: // 괄호 다른 순서
+                [, orderNum, name, seatNum, location, paymentStatus] = match;
+                break;
+            case 4: // 슬래시 구분
+                [, name, location, seatNum, paymentStatus] = match;
+                orderNum = null;
+                break;
+            case 5: // 콜론 구분
+                [, name, location, seatNum, paymentStatus] = match;
+                orderNum = null;
+                break;
+        }
+
+        // 데이터 정리 및 정규화
+        name = this.cleanName(name);
+        location = this.normalizeLocation(location);
+        paymentStatus = this.normalizePaymentStatus(paymentStatus || '');
+        seatNum = parseInt(seatNum);
+        orderNum = orderNum ? parseInt(orderNum) : this.getNextOrderNumber();
+
+        // 유효성 검사
+        if (!name || !location || !seatNum || isNaN(seatNum)) {
             return null;
         }
 
-        const [, orderNum, name, paymentStatus, location, seatNum] = match;
-
-        // 입금 상태 정규화
-        const normalizedPaymentStatus = this.normalizePaymentStatus(paymentStatus.trim());
-        
         return {
-            orderNumber: parseInt(orderNum),
-            name: name.trim(),
-            paymentStatus: normalizedPaymentStatus,
-            location: location.trim(),
-            seatNumber: parseInt(seatNum)
+            orderNumber: orderNum,
+            name: name,
+            paymentStatus: paymentStatus,
+            location: location,
+            seatNumber: seatNum
         };
+    }
+
+    fuzzyParsePassengerLine(line) {
+        // 정규식으로 추출 가능한 요소들 찾기
+        const nameMatch = line.match(/[가-힣]{2,4}/); // 한글 이름
+        const seatMatch = line.match(/(\d{1,2})(?:번|좌석)?/); // 좌석번호
+        const locationMatch = line.match(/[가-힣]{2,4}(?:역|동|구|시|면|읍)?/g); // 지역명들
+        
+        if (!nameMatch || !seatMatch) {
+            return null;
+        }
+
+        const name = nameMatch[0];
+        const seatNum = parseInt(seatMatch[1]);
+        
+        // 지역명 중에서 이름이 아닌 것 찾기
+        let location = '';
+        if (locationMatch) {
+            for (let loc of locationMatch) {
+                if (loc !== name && this.isValidLocation(loc)) {
+                    location = loc;
+                    break;
+                }
+            }
+        }
+
+        // 입금 상태 추출
+        const paymentStatus = this.extractPaymentStatus(line);
+
+        if (!location) {
+            return null;
+        }
+
+        return {
+            orderNumber: this.getNextOrderNumber(),
+            name: name,
+            paymentStatus: paymentStatus,
+            location: location,
+            seatNumber: seatNum
+        };
+    }
+
+    cleanName(name) {
+        return name.trim().replace(/[^\가-힣a-zA-Z]/g, '');
+    }
+
+    normalizeLocation(location) {
+        const locationMap = {
+            // 역명 정규화
+            '양재역': '양재', '양재동': '양재',
+            '강남역': '강남', '강남구': '강남',
+            '사당역': '사당', '사당동': '사당',
+            '서초역': '서초', '서초구': '서초', '서초동': '서초',
+            '논현역': '논현', '논현동': '논현',
+            '신논현역': '신논현', '신논현동': '신논현',
+            '역삼역': '역삼', '역삼동': '역삼',
+            '선릉역': '선릉', '선릉동': '선릉',
+            '삼성역': '삼성', '삼성동': '삼성',
+            '잠실역': '잠실', '잠실동': '잠실'
+        };
+
+        const cleaned = location.trim();
+        return locationMap[cleaned] || cleaned;
+    }
+
+    isValidLocation(location) {
+        const commonLocations = [
+            '양재', '강남', '사당', '서초', '논현', '신논현', '역삼', '선릉', '삼성', '잠실',
+            '신촌', '홍대', '이태원', '명동', '동대문', '성수', '건대', '왕십리', '종로'
+        ];
+        
+        return commonLocations.some(loc => location.includes(loc));
+    }
+
+    extractPaymentStatus(line) {
+        // 입금 관련 키워드 찾기
+        const paidKeywords = ['입완', '입금완료', '완료', '입금됨', '결제완료', '돈냄', '냈어', '입금했', '결제했'];
+        const pendingKeywords = ['예정', '입금예정', '미입금', '대기', '예약', '안냄', '안했', '예정임'];
+
+        const lowerLine = line.toLowerCase();
+        
+        for (let keyword of paidKeywords) {
+            if (line.includes(keyword)) {
+                return 'paid';
+            }
+        }
+        
+        for (let keyword of pendingKeywords) {
+            if (line.includes(keyword)) {
+                return 'pending';
+            }
+        }
+        
+        return 'pending'; // 기본값
+    }
+
+    getNextOrderNumber() {
+        return this.passengers.length + 1;
     }
 
     normalizePaymentStatus(status) {
@@ -110,12 +418,18 @@ class BusSeatManager {
             // 기존 데이터 초기화
             this.clearSeats();
 
-            // 텍스트 파싱
-            this.passengers = this.parsePassengerText(inputText);
+            // 텍스트 파싱 (자연어 처리 포함)
+            const parseResult = this.parsePassengerTextWithFeedback(inputText);
+            this.passengers = parseResult.passengers;
 
             if (this.passengers.length === 0) {
-                alert('올바른 형식의 승객 정보를 찾을 수 없습니다.\n\n예시 형식:\n1. 김진욱(입완, 양재, 1)\n2. 나정선(예정, 사당, 3)');
+                this.showParsingError(parseResult.errors, inputText);
                 return;
+            }
+
+            // 파싱 결과 피드백 표시
+            if (parseResult.warnings.length > 0) {
+                this.showParsingWarnings(parseResult.warnings);
             }
 
             // 좌석 번호 유효성 검사
