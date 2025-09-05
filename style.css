@@ -464,9 +464,10 @@ button {
     }
     
     .seat.occupied::after {
-        bottom: -20px;
-        font-size: 9px;
-        max-width: 60px;
+        bottom: -22px;
+        font-size: 10px;
+        max-width: 65px;
+        font-weight: bold;
     }
     
     .aisle {
@@ -601,8 +602,9 @@ button {
     
     .seat.occupied::after {
         bottom: -18px;
-        font-size: 8px;
-        max-width: 50px;
+        font-size: 9px;
+        max-width: 55px;
+        font-weight: bold;
     }
     
     .driver-area {
@@ -644,7 +646,9 @@ button {
     }
     
     .seat.occupied::after {
-        display: none; /* 매우 작은 화면에서는 이름 숨김 */
+        bottom: -15px;
+        font-size: 7px;
+        max-width: 45px;
     }
     
     .total-stat .number {
