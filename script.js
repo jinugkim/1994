@@ -1,6 +1,23 @@
 class BusSeatManager {
     constructor() {
         this.passengers = [];
+        this.locationColors = {};
+        this.colorPalette = [
+            '#e74c3c', // 빨강
+            '#3498db', // 파랑
+            '#2ecc71', // 초록
+            '#f39c12', // 주황
+            '#9b59b6', // 보라
+            '#1abc9c', // 청록
+            '#e67e22', // 진한 주황
+            '#34495e', // 회색
+            '#e91e63', // 분홍
+            '#00bcd4', // 하늘색
+            '#8bc34a', // 연두
+            '#ff5722', // 딥 오렌지
+            '#795548', // 갈색
+            '#607d8b'  // 청회색
+        ];
         this.initializeEventListeners();
     }
 
@@ -116,6 +133,9 @@ class BusSeatManager {
                 return;
             }
 
+            // 탑승지별 색상 할당
+            this.assignLocationColors();
+            
             // 좌석 배치도 업데이트
             this.displaySeats();
             this.displayLocationStats();
@@ -130,6 +150,18 @@ class BusSeatManager {
         }
     }
 
+    assignLocationColors() {
+        // 고유한 탑승지 목록 추출
+        const uniqueLocations = [...new Set(this.passengers.map(p => p.location))];
+        
+        // 각 탑승지에 색상 할당
+        uniqueLocations.forEach((location, index) => {
+            if (!this.locationColors[location]) {
+                this.locationColors[location] = this.colorPalette[index % this.colorPalette.length];
+            }
+        });
+    }
+
     displaySeats() {
         // 모든 좌석 요소 가져오기
         const seatElements = document.querySelectorAll('.seat[data-seat]');
@@ -141,6 +173,20 @@ class BusSeatManager {
                 seatElement.classList.add('occupied');
                 seatElement.classList.add(passenger.paymentStatus);
                 
+                // 탑승지별 색상 적용
+                const locationColor = this.locationColors[passenger.location];
+                if (locationColor) {
+                    seatElement.style.backgroundColor = locationColor;
+                    seatElement.style.borderColor = this.darkenColor(locationColor, 20);
+                    
+                    // 입금 상태에 따른 투명도 조정
+                    if (passenger.paymentStatus === 'pending') {
+                        seatElement.style.opacity = '0.7';
+                    } else {
+                        seatElement.style.opacity = '1';
+                    }
+                }
+                
                 // 승객 이름을 data 속성으로 추가 (CSS에서 표시용)
                 seatElement.setAttribute('data-passenger-name', passenger.name);
                 
@@ -148,6 +194,18 @@ class BusSeatManager {
                 seatElement.title = `${passenger.name}\n${passenger.paymentStatus === 'paid' ? '입금완료' : '입금예정'}\n${passenger.location}`;
             }
         });
+    }
+
+    darkenColor(color, percent) {
+        // 색상을 어둡게 만드는 유틸리티 함수
+        const num = parseInt(color.replace("#",""), 16);
+        const amt = Math.round(2.55 * percent);
+        const R = (num >> 16) - amt;
+        const G = (num >> 8 & 0x00FF) - amt;
+        const B = (num & 0x0000FF) - amt;
+        return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + 
+            (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 + 
+            (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
     }
 
     displayLocationStats() {
@@ -181,16 +239,19 @@ class BusSeatManager {
         const locationStatsHTML = Object.entries(locationData)
             .sort((a, b) => b[1].total - a[1].total) // 인원수 많은 순으로 정렬
             .map(([location, stats]) => {
+                const locationColor = this.locationColors[location] || '#3498db';
                 return `
-                    <div class="location-stat-item">
-                        <div>
+                    <div class="location-stat-item" style="border-left-color: ${locationColor};">
+                        <div class="location-color-indicator" style="background-color: ${locationColor};"></div>
+                        <div class="location-info">
                             <div class="location-name">${location}</div>
+                            <div class="location-summary">총 ${stats.total}명</div>
                             <div class="location-details">
-                                <span class="paid-count">입금완료 ${stats.paid}명</span> / 
-                                <span class="pending-count">입금예정 ${stats.pending}명</span>
+                                <span class="paid-count">✓ 입금완료 ${stats.paid}명</span>
+                                <span class="pending-count">⏳ 입금예정 ${stats.pending}명</span>
                             </div>
                         </div>
-                        <div class="location-count">${stats.total}명</div>
+                        <div class="location-count" style="background-color: ${locationColor};">${stats.total}</div>
                     </div>
                 `;
             }).join('');
@@ -218,11 +279,23 @@ class BusSeatManager {
             </div>
         `;
 
+        // 색상 범례 생성
+        const colorLegendHTML = Object.entries(this.locationColors)
+            .map(([location, color]) => {
+                return `
+                    <div class="color-legend-item">
+                        <div class="color-dot" style="background-color: ${color};"></div>
+                        <span>${location}</span>
+                    </div>
+                `;
+            }).join('');
+
         locationStats.innerHTML = `
             <div class="location-stats">
                 ${locationStatsHTML}
             </div>
             ${totalStatsHTML}
+            ${colorLegendHTML ? `<div class="color-legend"><h4>탑승지별 색상</h4><div class="color-legend-grid">${colorLegendHTML}</div></div>` : ''}
         `;
     }
 
@@ -262,6 +335,10 @@ class BusSeatManager {
             seat.classList.remove('occupied', 'paid', 'pending');
             seat.removeAttribute('data-passenger-name');
             seat.removeAttribute('title');
+            // 인라인 스타일 초기화
+            seat.style.backgroundColor = '';
+            seat.style.borderColor = '';
+            seat.style.opacity = '';
         });
     }
 
@@ -269,8 +346,9 @@ class BusSeatManager {
         // 입력창 초기화
         document.getElementById('textInput').value = '';
         
-        // 승객 데이터 초기화
+        // 승객 데이터 및 색상 초기화
         this.passengers = [];
+        this.locationColors = {};
         
         // 좌석 상태 초기화
         this.clearSeats();
