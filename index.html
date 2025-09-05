@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown 뷰어</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📝 Markdown 뷰어</h1>
+            <p>Markdown 파일을 업로드하거나 직접 입력하여 미리보기할 수 있습니다.</p>
+        </header>
+
+        <div class="controls">
+            <div class="file-upload">
+                <label for="file-input" class="file-label">
+                    📁 파일 선택
+                </label>
+                <input type="file" id="file-input" accept=".md,.markdown,.txt" />
+            </div>
+            
+            <div class="mode-toggle">
+                <button id="edit-mode" class="mode-btn active">✏️ 편집</button>
+                <button id="preview-mode" class="mode-btn">👁️ 미리보기</button>
+                <button id="split-mode" class="mode-btn">📋 분할</button>
+                <button id="mermaid-mode" class="mode-btn">📊 다이어그램</button>
+            </div>
+        </div>
+
+        <!-- 드래그 앤 드롭 영역 -->
+        <div class="drag-drop-zone" id="drag-drop-zone">
+            <div class="drag-drop-content">
+                <div class="drag-drop-icon">📄</div>
+                <h3>Markdown 파일을 여기에 드래그하세요</h3>
+                <p>또는 <span class="file-link">파일 선택</span> 버튼을 클릭하세요</p>
+                <div class="supported-formats">
+                    지원 형식: .md, .markdown, .txt
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="editor-panel">
+                <div class="panel-header">
+                    <h3>Markdown 소스</h3>
+                    <div class="editor-actions">
+                        <button id="clear-btn" class="action-btn">🗑️ 지우기</button>
+                        <button id="download-btn" class="action-btn">💾 다운로드</button>
+                    </div>
+                </div>
+                <textarea id="markdown-input" placeholder="Markdown을 입력하거나 파일을 업로드하세요..."></textarea>
+            </div>
+
+            <div class="preview-panel">
+                <div class="panel-header">
+                    <h3>미리보기</h3>
+                    <div class="preview-actions">
+                        <button id="copy-html-btn" class="action-btn">📋 HTML 복사</button>
+                        <button id="print-btn" class="action-btn">🖨️ 인쇄</button>
+                    </div>
+                </div>
+                <div id="markdown-preview" class="preview-content"></div>
+            </div>
+
+            <!-- Mermaid 에디터 패널 -->
+            <div class="mermaid-panel" id="mermaid-panel" style="display: none;">
+                <div class="panel-header">
+                    <h3>Mermaid 다이어그램</h3>
+                    <div class="mermaid-actions">
+                        <button id="clear-mermaid-btn" class="action-btn">🗑️ 지우기</button>
+                        <button id="download-mermaid-btn" class="action-btn">💾 다운로드</button>
+                        <button id="copy-mermaid-btn" class="action-btn">📋 복사</button>
+                    </div>
+                </div>
+                <div class="mermaid-editor-container">
+                    <textarea id="mermaid-input" placeholder="Mermaid 다이어그램 코드를 입력하세요..."></textarea>
+                </div>
+            </div>
+
+            <!-- Mermaid 미리보기 패널 -->
+            <div class="mermaid-preview-panel" id="mermaid-preview-panel" style="display: none;">
+                <div class="panel-header">
+                    <h3>다이어그램 미리보기</h3>
+                    <div class="mermaid-preview-actions">
+                        <button id="export-svg-btn" class="action-btn">📊 SVG 내보내기</button>
+                        <button id="print-mermaid-btn" class="action-btn">🖨️ 인쇄</button>
+                    </div>
+                </div>
+                <div id="mermaid-preview" class="mermaid-preview-content"></div>
+            </div>
+        </div>
+
+        <div class="sample-section">
+            <h3>📚 샘플 Markdown</h3>
+            <div class="sample-buttons">
+                <button class="sample-btn" data-sample="basic">기본 문법</button>
+                <button class="sample-btn" data-sample="table">테이블</button>
+                <button class="sample-btn" data-sample="code">코드 블록</button>
+                <button class="sample-btn" data-sample="list">목록</button>
+            </div>
+        </div>
+
+        <div class="sample-section" id="mermaid-samples" style="display: none;">
+            <h3>📊 샘플 Mermaid 다이어그램</h3>
+            <div class="sample-buttons">
+                <button class="mermaid-sample-btn" data-sample="flowchart">플로우차트</button>
+                <button class="mermaid-sample-btn" data-sample="sequence">시퀀스 다이어그램</button>
+                <button class="mermaid-sample-btn" data-sample="gantt">간트 차트</button>
+                <button class="mermaid-sample-btn" data-sample="class">클래스 다이어그램</button>
+                <button class="mermaid-sample-btn" data-sample="mindmap">마인드맵</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
