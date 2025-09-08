@@ -53,30 +53,35 @@ class BusSeatManager {
     }
 
 
-    parsePassengerLine(line) {
-        // 정규식 패턴: 숫자. 이름(입금여부, 탑승지, 좌석번호)
-        // 예: "1. 김진욱(입완, 양재, 1)" 또는 "2. 나정선(예정, 사당, 3)"
-        const pattern = /(\d+)\.\s*([^(]+)\(([^,]+),\s*([^,]+),\s*(\d+)\)/;
-        const match = line.trim().match(pattern);
-
-        if (!match) {
-            return null;
-        }
-
-        const [, orderNum, name, paymentStatus, location, seatNum] = match;
-
-        // 입금 상태 정규화
-        const normalizedPaymentStatus = this.normalizePaymentStatus(paymentStatus.trim());
-        
-        return {
-            orderNumber: parseInt(orderNum),
-            name: name.trim(),
-            paymentStatus: normalizedPaymentStatus,
-            location: location.trim(),
-            seatNumber: parseInt(seatNum)
-        };
-    }
-
+	parsePassengerLine(line) {
+     // 정규식 패턴: 숫자. 이름(입금여부, 탑승지, 좌석번호)
+     // 쉼표와 공백을 혼용한 경우도 모두 처리
+     // 좌석번호 뒤의 특수기호(!, ?, *, 등) 제거
+     // 예: "1. 김진욱(입완, 양재, 1)" 또는 "7. 정지은(입완 양재 12)" 또는 "20.김민정 (입완, 사당, 19!!!)"
+     // "21. 홍길동(입완, 양재 13)" 또는 "22. 이순신(입완 양재, 14)"
+     const flexiblePattern = /(\d+)\.\s*([^(]+)\(([^,)]+)[,\s]+([^,)]+)[,\s]+(\d+)[^\d)]*\)/;
+     
+     let match = line.trim().match(flexiblePattern);
+ 
+     if (!match) {
+         return null;
+     }
+ 
+     const [, orderNum, name, paymentStatus, location, seatNum] = match;
+ 
+     // 입금 상태 정규화
+     const normalizedPaymentStatus = this.normalizePaymentStatus(paymentStatus.trim());
+     
+     return {
+         orderNumber: parseInt(orderNum),
+         name: name.trim(),
+         paymentStatus: normalizedPaymentStatus,
+         location: location.trim(),
+         seatNumber: parseInt(seatNum)
+     };
+	}
+ 
+ 
     normalizePaymentStatus(status) {
         // 입금완료 관련 키워드들
         const paidKeywords = ['입완', '입금완료', '완료', '입금됨', '결제완료'];
