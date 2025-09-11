@@ -54,6 +54,13 @@ class BusSeatManager {
 
 
 	parsePassengerLine(line) {
+     const trimmedLine = line.trim();
+     
+     // 헤더 및 비승객 정보 필터링
+     if (this.isHeaderOrNonPassengerLine(trimmedLine)) {
+         return null;
+     }
+     
      // 정규식 패턴: 숫자. 이름(입금여부, 탑승지, 좌석번호)
      // 쉼표와 공백을 혼용한 경우도 모두 처리
      // 좌석번호 뒤의 특수기호(!, ?, *, 등) 제거
@@ -61,27 +68,93 @@ class BusSeatManager {
      // "21. 홍길동(입완, 양재 13)" 또는 "22. 이순신(입완 양재, 14)"
      const flexiblePattern = /(\d+)\.\s*([^(]+)\(([^,)]+)[,\s]+([^,)]+)[,\s]+(\d+)[^\d)]*\)/;
      
-     let match = line.trim().match(flexiblePattern);
+     let match = trimmedLine.match(flexiblePattern);
  
-     if (!match) {
-         return null;
+     if (match) {
+         // 완전한 정보가 있는 경우
+         const [, orderNum, name, paymentStatus, location, seatNum] = match;
+ 
+         // 입금 상태 정규화
+         const normalizedPaymentStatus = this.normalizePaymentStatus(paymentStatus.trim());
+         
+         return {
+             orderNumber: parseInt(orderNum),
+             name: name.trim(),
+             paymentStatus: normalizedPaymentStatus,
+             location: location.trim(),
+             seatNumber: parseInt(seatNum)
+         };
+     }
+     
+     // 빈 항목 패턴: "숫자. " 또는 "숫자." (이름이 없는 경우)
+     const emptyItemPattern = /^(\d+)\.\s*$/;
+     if (emptyItemPattern.test(trimmedLine)) {
+         return null; // 빈 항목은 무시
+     }
+     
+     // 이름만 있는 패턴: "숫자. 이름" (괄호가 없는 경우)
+     const nameOnlyPattern = /^(\d+)\.\s*([^\s]+)$/;
+     const nameMatch = trimmedLine.match(nameOnlyPattern);
+     
+     if (nameMatch) {
+         const [, orderNum, name] = nameMatch;
+         return {
+             orderNumber: parseInt(orderNum),
+             name: name.trim(),
+             paymentStatus: 'pending', // 기본값
+             location: '미지정',
+             seatNumber: null // 좌석번호 없음
+         };
      }
  
-     const [, orderNum, name, paymentStatus, location, seatNum] = match;
- 
-     // 입금 상태 정규화
-     const normalizedPaymentStatus = this.normalizePaymentStatus(paymentStatus.trim());
-     
-     return {
-         orderNumber: parseInt(orderNum),
-         name: name.trim(),
-         paymentStatus: normalizedPaymentStatus,
-         location: location.trim(),
-         seatNumber: parseInt(seatNum)
-     };
+     return null;
 	}
- 
- 
+
+    // 헤더 및 비승객 정보 필터링
+    isHeaderOrNonPassengerLine(line) {
+        // 빈 줄
+        if (!line || line.length === 0) {
+            return true;
+        }
+        
+        // 괄호로 시작하는 줄 (예: "(10/25토) 만추, 설악산 천불동!!")
+        if (line.startsWith('(')) {
+            return true;
+        }
+        
+        // 별표로 시작하는 줄 (예: "* 소공원 ~ 천당폭포 왕복")
+        if (line.startsWith('*')) {
+            return true;
+        }
+        
+        // 대시로 시작하는 줄 (예: " - 14km/6.5h/획득고도 500m")
+        if (line.startsWith('-')) {
+            return true;
+        }
+        
+        // URL 패턴 (예: "https://m.blog.naver.com/...")
+        if (line.startsWith('http')) {
+            return true;
+        }
+        
+        // 계좌 정보 패턴 (예: "* 카뱅 3333-16-1619747")
+        if (line.includes('카뱅') || line.includes('계좌') || /^\d{4}-\d{2}-\d{7}/.test(line)) {
+            return true;
+        }
+        
+        // 탑승지 정보 패턴 (예: "* 탑승(사당, 양재, 복정)")
+        if (line.includes('탑승(') || line.includes('탑승지')) {
+            return true;
+        }
+        
+        // 숫자로 시작하지 않는 줄 (승객 정보는 반드시 "숫자."로 시작)
+        if (!/^\d+\./.test(line)) {
+            return true;
+        }
+        
+        return false;
+    }
+
     normalizePaymentStatus(status) {
         // 입금완료 관련 키워드들
         const paidKeywords = ['입완', '입금완료', '완료', '입금됨', '결제완료'];
@@ -101,6 +174,10 @@ class BusSeatManager {
     }
 
     validateSeatNumber(seatNumber) {
+        // null 값은 허용 (미지정 탑승자)
+        if (seatNumber === null) {
+            return true;
+        }
         return seatNumber >= 1 && seatNumber <= 28;
     }
 
@@ -132,8 +209,8 @@ class BusSeatManager {
                 return;
             }
 
-            // 중복 좌석 검사
-            const seatNumbers = this.passengers.map(p => p.seatNumber);
+            // 중복 좌석 검사 (null 값 제외)
+            const seatNumbers = this.passengers.map(p => p.seatNumber).filter(seat => seat !== null);
             const duplicateSeats = seatNumbers.filter((seat, index) => seatNumbers.indexOf(seat) !== index);
             if (duplicateSeats.length > 0) {
                 alert(`중복된 좌석 번호가 있습니다: ${[...new Set(duplicateSeats)].join(', ')}`);
@@ -174,31 +251,34 @@ class BusSeatManager {
         const seatElements = document.querySelectorAll('.seat[data-seat]');
 
         this.passengers.forEach(passenger => {
-            const seatElement = document.querySelector(`[data-seat="${passenger.seatNumber}"]`);
-            if (seatElement) {
-                // 좌석 상태 클래스 추가
-                seatElement.classList.add('occupied');
-                seatElement.classList.add(passenger.paymentStatus);
-                
-                // 탑승지별 색상 적용
-                const locationColor = this.locationColors[passenger.location];
-                if (locationColor) {
-                    seatElement.style.backgroundColor = locationColor;
-                    seatElement.style.borderColor = this.darkenColor(locationColor, 20);
+            // 좌석번호가 있는 경우에만 좌석 표시
+            if (passenger.seatNumber !== null) {
+                const seatElement = document.querySelector(`[data-seat="${passenger.seatNumber}"]`);
+                if (seatElement) {
+                    // 좌석 상태 클래스 추가
+                    seatElement.classList.add('occupied');
+                    seatElement.classList.add(passenger.paymentStatus);
                     
-                    // 입금 상태에 따른 투명도 조정
-                    if (passenger.paymentStatus === 'pending') {
-                        seatElement.style.opacity = '0.7';
-                    } else {
-                        seatElement.style.opacity = '1';
+                    // 탑승지별 색상 적용
+                    const locationColor = this.locationColors[passenger.location];
+                    if (locationColor) {
+                        seatElement.style.backgroundColor = locationColor;
+                        seatElement.style.borderColor = this.darkenColor(locationColor, 20);
+                        
+                        // 입금 상태에 따른 투명도 조정
+                        if (passenger.paymentStatus === 'pending') {
+                            seatElement.style.opacity = '0.7';
+                        } else {
+                            seatElement.style.opacity = '1';
+                        }
                     }
+                    
+                    // 승객 이름을 data 속성으로 추가 (CSS에서 표시용)
+                    seatElement.setAttribute('data-passenger-name', passenger.name);
+                    
+                    // 툴팁 추가
+                    seatElement.title = `${passenger.name}\n${passenger.paymentStatus === 'paid' ? '입금완료' : '입금예정'}\n${passenger.location}`;
                 }
-                
-                // 승객 이름을 data 속성으로 추가 (CSS에서 표시용)
-                seatElement.setAttribute('data-passenger-name', passenger.name);
-                
-                // 툴팁 추가
-                seatElement.title = `${passenger.name}\n${passenger.paymentStatus === 'paid' ? '입금완료' : '입금예정'}\n${passenger.location}`;
             }
         });
     }
@@ -267,21 +347,49 @@ class BusSeatManager {
         const totalStats = this.getStatistics();
         const totalStatsHTML = `
             <div class="total-stats">
-                <div class="total-stat">
-                    <div class="number">${totalStats.total}</div>
-                    <div class="label">총 승객</div>
+                <div class="stats-group">
+                    <div class="stats-group-header">
+                        <h4>총 승객</h4>
+                        <div class="total-count">${totalStats.total}명</div>
+                    </div>
+                    <div class="stats-group-details">
+                        <div class="stat-item paid">
+                            <div class="stat-icon">✓</div>
+                            <div class="stat-info">
+                                <div class="stat-number">${totalStats.paid}</div>
+                                <div class="stat-label">입금완료</div>
+                            </div>
+                        </div>
+                        <div class="stat-item pending">
+                            <div class="stat-icon">⏳</div>
+                            <div class="stat-info">
+                                <div class="stat-number">${totalStats.pending}</div>
+                                <div class="stat-label">입금예정</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="total-stat">
-                    <div class="number">${totalStats.paid}</div>
-                    <div class="label">입금완료</div>
-                </div>
-                <div class="total-stat">
-                    <div class="number">${totalStats.pending}</div>
-                    <div class="label">입금예정</div>
-                </div>
-                <div class="total-stat">
-                    <div class="number">${totalStats.empty}</div>
-                    <div class="label">빈 좌석</div>
+                <div class="stats-group">
+                    <div class="stats-group-header">
+                        <h4>좌석 현황</h4>
+                        <div class="total-count">28석</div>
+                    </div>
+                    <div class="stats-group-details">
+                        <div class="stat-item occupied">
+                            <div class="stat-icon">👥</div>
+                            <div class="stat-info">
+                                <div class="stat-number">${totalStats.total - totalStats.empty}</div>
+                                <div class="stat-label">사용중</div>
+                            </div>
+                        </div>
+                        <div class="stat-item empty">
+                            <div class="stat-icon">🪑</div>
+                            <div class="stat-info">
+                                <div class="stat-number">${totalStats.empty}</div>
+                                <div class="stat-label">빈 좌석</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -314,26 +422,90 @@ class BusSeatManager {
             return;
         }
 
-        // 좌석 번호 순으로 정렬
-        const sortedPassengers = [...this.passengers].sort((a, b) => a.seatNumber - b.seatNumber);
+        // 탑승지별로 그룹화
+        const groupedPassengers = this.groupPassengersByLocation();
+        
+        // 그룹별 HTML 생성
+        const groupedHTML = Object.entries(groupedPassengers)
+            .sort((a, b) => b[1].length - a[1].length) // 인원수 많은 순으로 정렬
+            .map(([location, passengers]) => {
+                const locationColor = this.locationColors[location] || '#3498db';
+                const locationStats = this.getLocationStats(passengers);
+                
+                return `
+                    <div class="location-group">
+                        <div class="location-group-header" style="border-left-color: ${locationColor};">
+                            <div class="location-group-title">
+                                <div class="location-color-indicator" style="background-color: ${locationColor};"></div>
+                                <span class="location-name">${location}</span>
+                                <span class="location-count">${passengers.length}명</span>
+                            </div>
+                            <div class="location-group-stats">
+                                <span class="paid-count">✓ ${locationStats.paid}명</span>
+                                <span class="pending-count">⏳ ${locationStats.pending}명</span>
+                            </div>
+                        </div>
+                        <div class="passenger-group">
+                            ${this.generatePassengerGroupHTML(passengers)}
+                        </div>
+                    </div>
+                `;
+            }).join('');
 
-        const passengerHTML = sortedPassengers.map(passenger => {
+        passengerInfo.innerHTML = groupedHTML;
+    }
+
+    // 탑승지별로 승객 그룹화
+    groupPassengersByLocation() {
+        const groups = {};
+        
+        this.passengers.forEach(passenger => {
+            const location = passenger.location;
+            if (!groups[location]) {
+                groups[location] = [];
+            }
+            groups[location].push(passenger);
+        });
+        
+        // 각 그룹 내에서 좌석 번호 순으로 정렬
+        Object.keys(groups).forEach(location => {
+            groups[location].sort((a, b) => {
+                if (a.seatNumber === null && b.seatNumber === null) return 0;
+                if (a.seatNumber === null) return 1;
+                if (b.seatNumber === null) return -1;
+                return a.seatNumber - b.seatNumber;
+            });
+        });
+        
+        return groups;
+    }
+
+    // 그룹 내 승객 통계 계산
+    getLocationStats(passengers) {
+        const paid = passengers.filter(p => p.paymentStatus === 'paid').length;
+        const pending = passengers.filter(p => p.paymentStatus === 'pending').length;
+        return { paid, pending };
+    }
+
+    // 승객 그룹 HTML 생성
+    generatePassengerGroupHTML(passengers) {
+        return passengers.map(passenger => {
             const statusText = passenger.paymentStatus === 'paid' ? '입금완료' : '입금예정';
             const statusClass = passenger.paymentStatus;
+            const seatText = passenger.seatNumber !== null ? `${passenger.seatNumber}번` : '미지정';
+            const isUnspecified = passenger.seatNumber === null;
+            const itemClass = isUnspecified ? `${statusClass} unspecified` : statusClass;
 
             return `
-                <div class="passenger-item ${statusClass}">
+                <div class="passenger-item ${itemClass}">
                     <div class="passenger-info">
                         <span class="passenger-name">${passenger.name}</span>
                         <span class="passenger-status ${statusClass}">${statusText}</span>
-                        <span class="passenger-location">${passenger.location}</span>
                     </div>
-                    <div class="seat-number">${passenger.seatNumber}번</div>
+                    <div class="seat-number">${seatText}</div>
                 </div>
             `;
         }).join('');
-
-        passengerInfo.innerHTML = passengerHTML;
     }
 
     clearSeats() {
@@ -372,7 +544,9 @@ class BusSeatManager {
         const totalPassengers = this.passengers.length;
         const paidPassengers = this.passengers.filter(p => p.paymentStatus === 'paid').length;
         const pendingPassengers = this.passengers.filter(p => p.paymentStatus === 'pending').length;
-        const emptySeats = 28 - totalPassengers;
+        // 좌석이 배정된 승객 수 계산
+        const assignedSeats = this.passengers.filter(p => p.seatNumber !== null).length;
+        const emptySeats = 28 - assignedSeats;
 
         return {
             total: totalPassengers,
